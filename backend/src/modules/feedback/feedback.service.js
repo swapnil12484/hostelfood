@@ -45,8 +45,15 @@ const getAllFeedback = async () => {
   return rows;
 };
 
+const deleteFeedback = async (id) => {
+  const query = 'DELETE FROM meal_feedback WHERE id = ?';
+  await db.query(query, [id]);
+  return { id };
+};
+
 module.exports = {
   submitFeedback,
   getMyFeedback,
-  getAllFeedback
+  getAllFeedback,
+  deleteFeedback
 };

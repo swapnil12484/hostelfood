@@ -12,6 +12,7 @@ const Complaints = () => {
   const [showModal, setShowModal] = useState(false);
   const [newComplaint, setNewComplaint] = useState({ title: "", category: "Food Quality", description: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -150,7 +151,10 @@ const Complaints = () => {
 
                   {/* Actions */}
                   <div className="flex md:justify-end gap-2 mt-4 md:mt-0 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-primary text-white hover:opacity-90 transition-all">
+                    <button 
+                      onClick={() => setSelectedComplaint(complaint)}
+                      className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-primary text-white hover:opacity-90 transition-all shadow-md active:scale-95"
+                    >
                       VIEW DETAILS
                     </button>
                   </div>
@@ -212,6 +216,61 @@ const Complaints = () => {
                   {submitting ? "SUBMITTING..." : "SUBMIT TICKET"}
                 </button>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Modal for View Details */}
+        {selectedComplaint && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-2xl w-full p-10 space-y-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8">
+                <button onClick={() => setSelectedComplaint(null)} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className={`p-3 rounded-2xl ${
+                    selectedComplaint.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'
+                  }`}>
+                    <span className="material-symbols-outlined text-3xl filled-icon">
+                      {selectedComplaint.status === 'resolved' ? 'verified' : 'pending_actions'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Ticket Detail</h3>
+                    <p className="text-xs font-bold text-primary">#{selectedComplaint.id} • {new Date(selectedComplaint.created_at).toLocaleDateString()}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                   <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase bg-primary/10 text-primary px-2 py-0.5 rounded-md">{selectedComplaint.category}</span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        selectedComplaint.status === 'resolved' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-100 text-orange-600'
+                      }`}>{selectedComplaint.status}</span>
+                   </div>
+                   <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{selectedComplaint.title}</h2>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">Description</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+                    {selectedComplaint.description}
+                  </p>
+                </div>
+
+                <div className="pt-4">
+                  <button 
+                    onClick={() => setSelectedComplaint(null)}
+                    className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:opacity-90 transition-all"
+                  >
+                    Close View
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

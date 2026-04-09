@@ -18,6 +18,7 @@ const AdminDashboard = () => {
     cutoff_time: "07:00"
   });
   const [submittingMenu, setSubmittingMenu] = useState(false);
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -73,6 +74,35 @@ const AdminDashboard = () => {
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleResolveComplaint = async (complaintId) => {
+    try {
+      await api.patch(`/complaints/${complaintId}/resolve`);
+      // Update local state to reflect the resolution immediately
+      setData(prev => ({
+        ...prev,
+        complaints: prev.complaints.map(c => c.id === complaintId ? { ...c, status: 'resolved' } : c)
+      }));
+    } catch (error) {
+      console.error("Error resolving complaint:", error);
+      alert("Failed to resolve complaint. Please try again.");
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackId) => {
+    if (!window.confirm("Are you sure you want to delete this feedback?")) return;
+    try {
+      await api.delete(`/feedback/${feedbackId}`);
+      // Update local state by filtering out the deleted feedback
+      setData(prev => ({
+        ...prev,
+        feedbacks: prev.feedbacks.filter(fb => fb.id !== feedbackId)
+      }));
+    } catch (error) {
+      console.error("Error deleting feedback:", error);
+      alert("Failed to delete feedback. Please try again.");
+    }
   };
 
   const navItems = [
@@ -172,11 +202,27 @@ const AdminDashboard = () => {
                             </div>
                             <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{complaint.title}</p>
                           </div>
-                          <div className="text-right">
-                             <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{new Date(complaint.created_at).toLocaleDateString()}</span>
-                             <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${complaint.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                               {complaint.status}
-                             </span>
+                          <div className="flex items-center gap-6">
+                            <div className="text-right">
+                               <span className="text-[10px] text-slate-400 font-bold uppercase block mb-1">{new Date(complaint.created_at).toLocaleDateString()}</span>
+                               <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${complaint.status === 'pending' ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                 {complaint.status}
+                               </span>
+                            </div>
+                            {complaint.status === 'pending' && (
+                              <button 
+                                onClick={() => handleResolveComplaint(complaint.id)}
+                                className="bg-primary text-white text-[10px] font-black uppercase px-4 py-2 rounded-xl hover:scale-105 active:scale-95 transition-all shadow-md shadow-primary/20 border-0 cursor-pointer"
+                              >
+                                Resolve
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => setSelectedComplaint(complaint)}
+                              className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase px-4 py-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border-0 cursor-pointer"
+                            >
+                              Details
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -207,8 +253,15 @@ const AdminDashboard = () => {
                       {data.feedbacks.length === 0 ? (
                         <p className="italic text-slate-500 col-span-2">No feedback received for recent meals.</p>
                       ) : data.feedbacks.map(fb => (
-                        <div key={fb.id} className="p-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
-                          <div className="flex justify-between items-center mb-4">
+                        <div key={fb.id} className="p-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 relative group">
+                          <button 
+                            onClick={() => handleDeleteFeedback(fb.id)}
+                            className="absolute top-4 right-4 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 border-0 cursor-pointer"
+                            title="Delete Feedback"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                          <div className="flex justify-between items-center mb-4 pr-8">
                             <div>
                                 <p className="font-black text-sm text-slate-900 dark:text-white">{fb.user_name}</p>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase">{fb.meal_type} • {fb.menu_title}</p>
@@ -331,6 +384,75 @@ const AdminDashboard = () => {
           </div>
         </main>
       </div>
+
+      {/* Detail Modal */}
+      {selectedComplaint && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] max-w-2xl w-full p-10 space-y-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-4">
+                <div className={`p-4 rounded-2xl ${
+                  selectedComplaint.status === 'resolved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'
+                }`}>
+                  <span className="material-symbols-outlined text-3xl filled-icon">
+                    {selectedComplaint.status === 'resolved' ? 'verified' : 'pending_actions'}
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.2em] text-slate-400">Incident Report</h3>
+                  <p className="text-xs font-bold text-primary">#{selectedComplaint.id} • {new Date(selectedComplaint.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedComplaint(null)} className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all active:scale-90 shadow-sm border-0 cursor-pointer">
+                <span className="material-symbols-outlined font-black">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Student</p>
+                  <p className="text-sm font-bold">{selectedComplaint.user_name}</p>
+                </div>
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Category</p>
+                  <p className="text-sm font-bold text-primary">{selectedComplaint.category}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                 <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">{selectedComplaint.title}</h2>
+                 <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-8 border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">Detailed Context</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">
+                      "{selectedComplaint.description}"
+                    </p>
+                 </div>
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                {selectedComplaint.status === 'pending' && (
+                  <button 
+                    onClick={() => {
+                       handleResolveComplaint(selectedComplaint.id);
+                       setSelectedComplaint(null);
+                    }}
+                    className="flex-1 bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:scale-[1.02] transition-all shadow-xl shadow-primary/20 border-0 cursor-pointer"
+                  >
+                    Resolve Ticket
+                  </button>
+                )}
+                <button 
+                  onClick={() => setSelectedComplaint(null)}
+                  className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all font-headline border-0 cursor-pointer"
+                >
+                  Close View
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

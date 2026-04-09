@@ -19,6 +19,7 @@ const Dashboard = () => {
   });
   const [notifications, setNotifications] = useState(true);
   const [user, setUser] = useState(null);
+  const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -70,11 +71,11 @@ const Dashboard = () => {
 
   const handleFeedbackSubmit = async () => {
     if (!feedback.meal_slot_id) {
-       alert("Please select a meal to rate.");
+       setStatusMsg({ type: "error", text: "Please select a meal to rate." });
        return;
     }
     if (!feedback.comment.trim()) {
-      alert("Please enter a comment before submitting.");
+      setStatusMsg({ type: "error", text: "Please enter a comment." });
       return;
     }
     
@@ -84,14 +85,28 @@ const Dashboard = () => {
         rating: feedback.rating,
         comment: feedback.comment
       });
-      alert("Feedback submitted successfully!");
+      
+      setStatusMsg({ type: "success", text: "Feedback submitted successfully!" });
       setFeedback({ meal_slot_id: null, rating: 5, comment: "" });
       
+      // Update local state to reflect the rating
+      setTodayMeals(prev => prev.map(meal => 
+        meal.id === feedback.meal_slot_id ? { ...meal, has_rated: true } : meal
+      ));
+
       const summaryRes = await api.get("/dashboard/summary");
-      setSummary(summaryRes.data.summary);
+      if (summaryRes.data.summary) {
+        setSummary(summaryRes.data.summary);
+      }
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setStatusMsg({ type: "", text: "" }), 3000);
     } catch (error) {
       console.error("Error submitting feedback:", error);
-      alert(error.response?.data?.message || "Failed to submit feedback.");
+      setStatusMsg({ 
+        type: "error", 
+        text: error.response?.data?.message || "Failed to submit feedback." 
+      });
     }
   };
 
@@ -195,9 +210,22 @@ const Dashboard = () => {
                             <div className="aspect-video rounded-lg overflow-hidden bg-slate-100 relative group">
                               <img className="w-full h-full object-cover" alt={meal.meal_type} src={meal.image_url || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"} />
                               <div className="absolute top-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded font-bold">{meal.meal_type}</div>
-                              <button onClick={() => setFeedback(prev => ({ ...prev, meal_slot_id: meal.id }))} className="absolute bottom-2 right-2 p-1.5 bg-white rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="material-symbols-outlined text-sm">rate_review</span>
-                              </button>
+                              {meal.has_rated ? (
+                                <div className="absolute bottom-2 right-2 p-1.5 bg-emerald-500 rounded-lg text-white shadow-sm border border-emerald-600/20" title="Already Rated">
+                                  <span className="material-symbols-outlined text-sm block">verified</span>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => {
+                                    setFeedback(prev => ({ ...prev, meal_slot_id: meal.id }));
+                                    setStatusMsg({ type: "", text: "" });
+                                  }} 
+                                  className="absolute bottom-2 right-2 p-1.5 bg-white rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-lg"
+                                  title="Rate this meal"
+                                >
+                                  <span className="material-symbols-outlined text-sm block">rate_review</span>
+                                </button>
+                              )}
                             </div>
                             <div>
                               <h4 className="font-semibold text-sm truncate">{meal.menu_title}</h4>
@@ -252,6 +280,19 @@ const Dashboard = () => {
                     <p className="text-xs text-primary font-bold uppercase mb-4">Rating: {todayMeals.find(m => m.id === feedback.meal_slot_id)?.meal_type}</p>
                   ) : (
                     <p className="text-xs text-slate-500 mb-4">Select a meal from today's menu to rate.</p>
+                  )}
+                  
+                  {statusMsg.text && (
+                    <div className={`text-[11px] font-bold p-3 rounded-lg mb-4 flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-300 ${
+                      statusMsg.type === 'success' 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50' 
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-100 dark:border-red-800/50'
+                    }`}>
+                      <span className="material-symbols-outlined text-sm">
+                        {statusMsg.type === 'success' ? 'check_circle' : 'error'}
+                      </span>
+                      {statusMsg.text}
+                    </div>
                   )}
                   <div className="flex items-center gap-2 mb-6">
                     {[1, 2, 3, 4, 5].map((star) => (

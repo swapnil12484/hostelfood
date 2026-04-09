@@ -37,8 +37,19 @@ const getAllComplaints = async (req, res) => {
   }
 };
 
+const resolveComplaint = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await complaintsService.resolveComplaint(id);
+    return res.json({ message: 'Complaint resolved successfully' });
+  } catch (err) {
+    return res.status(500).json({ code: 'INTERNAL_ERROR', message: err.message || 'Internal server error' });
+  }
+};
+
 module.exports = {
   submitComplaint,
   getMyComplaints,
-  getAllComplaints
+  getAllComplaints,
+  resolveComplaint
 };

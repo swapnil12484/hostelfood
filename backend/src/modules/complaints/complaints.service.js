@@ -34,8 +34,15 @@ const getAllComplaints = async () => {
   return rows;
 };
 
+const resolveComplaint = async (complaintId) => {
+  const query = `UPDATE complaints SET status = 'resolved' WHERE id = ?`;
+  await db.query(query, [complaintId]);
+  return { id: complaintId, status: 'resolved' };
+};
+
 module.exports = {
   submitComplaint,
   getMyComplaints,
-  getAllComplaints
+  getAllComplaints,
+  resolveComplaint
 };

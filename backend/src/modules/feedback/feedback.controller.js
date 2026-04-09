@@ -38,8 +38,19 @@ const getAllFeedback = async (req, res) => {
   }
 };
 
+const deleteFeedback = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await feedbackService.deleteFeedback(id);
+    return res.json({ message: 'Feedback deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ code: 'INTERNAL_ERROR', message: err.message || 'Internal server error' });
+  }
+};
+
 module.exports = {
   submitFeedback,
   getMyFeedback,
-  getAllFeedback
+  getAllFeedback,
+  deleteFeedback
 };
