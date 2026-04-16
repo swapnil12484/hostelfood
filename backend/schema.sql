@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS users (
   role ENUM('student', 'admin') DEFAULT 'student',
   room_no VARCHAR(50),
   is_active BOOLEAN DEFAULT true,
+  reset_password_token VARCHAR(255) NULL,
+  reset_password_expires TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

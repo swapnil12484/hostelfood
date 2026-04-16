@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const db = require('../../db');
 
@@ -103,10 +104,60 @@ const setupAdmin = async () => {
   };
 };
 
+const forgotPassword = async (email) => {
+  const { rows } = await db.query('SELECT * FROM users WHERE email = ? AND is_active = true', [email]);
+  const user = rows[0];
+
+  if (!user) {
+    // For security, don't reveal if user exists. Just return success.
+    return { success: true, message: 'If an account exists with this email, you will receive a reset link.' };
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 3600000); // 1 hour
+
+  await db.query(
+    'UPDATE users SET reset_password_token = ?, reset_password_expires = ? WHERE id = ?',
+    [token, expires, user.id]
+  );
+
+  // LOGGING RESET LINK (Mocking email sending)
+  const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${token}`;
+  console.log('\n--- PASSWORD RESET REQUEST ---');
+  console.log(`User: ${email}`);
+  console.log(`Reset Link: ${resetLink}`);
+  console.log('-----------------------------\n');
+
+  return { success: true, message: 'If an account exists with this email, you will receive a reset link.' };
+};
+
+const resetPassword = async (token, newPassword) => {
+  const { rows } = await db.query(
+    'SELECT * FROM users WHERE reset_password_token = ? AND reset_password_expires > NOW() AND is_active = true',
+    [token]
+  );
+  const user = rows[0];
+
+  if (!user) {
+    throw { code: 'INVALID_TOKEN', message: 'Password reset token is invalid or has expired' };
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await db.query(
+    'UPDATE users SET password_hash = ?, reset_password_token = NULL, reset_password_expires = NULL WHERE id = ?',
+    [hashedPassword, user.id]
+  );
+
+  return { success: true, message: 'Password has been reset successfully' };
+};
+
 module.exports = {
   login,
   refresh,
   logout,
   setupAdmin,
-  register
+  register,
+  forgotPassword,
+  resetPassword
 };
